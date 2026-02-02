@@ -11,14 +11,22 @@ import json
 st.set_page_config(page_title="EduMaster Pro", layout="wide", page_icon="🎓")
 
 # ==========================================
-# ⚙️ إعدادات المفاتيح (الطريقة الحديثة)
+# 🔐 بيانات الاتصال (تم دمج مفتاحك هنا جاهز)
 # ==========================================
-
-# ⚠️⚠️ هام جداً: امسح المحتوى اللي بين علامات التنصيص وحط محتوى ملف الـ JSON الجديد
-# تأكد إنك بتنسخ من القوس { للقوس }
-RAW_JSON_DATA = """
-PASTE_YOUR_JSON_HERE
-"""
+# لا تعدل أي حرف في الجزء ده، ده المفتاح الخاص بيك
+CREDENTIALS_DICT = {
+  "type": "service_account",
+  "project_id": "teachers-app-v1",
+  "private_key_id": "612b514c54649cab165659a421e8515123e6a979",
+  "private_key": "-----BEGIN PRIVATE KEY-----\nMIIEvwIBADANBgkqhkiG9w0BAQEFAASCBKkwggSlAgEAAoIBAQCvZYxuUR3kZG1r\n10ZFXeui55T4wbH7Y9iYN8V0eq2TO9jbg7eyBREIN2/cxRNTUsvnvdvVsHnrm+uW\nfMfj2BJc+0jSupnBo0vugUCtxIFRAn1WCYyHIn+xMiuyUKbpXLWbp9xa2trO6w5V\nPjCtZ2XW3DjM+IvlUj+BkcFXpV3jZ9b8AqQ3hFHPvB24ZO/8hIqi/tkEl+Z0en0A\n1IY+KSvew/zKHjSgUvJtDvTSyl3LMknPysjXewJAOZHCnZcJNz3hYuc8KgksB7TH\nk5kLO+LQnfxbL5PnEZ+11F/enPzF5eL3zM8k3bvObLBwW7rT5aUFp3TP11pRVsRU\nRwSxHHa/AgMBAAECggEAFg7dVFpbOgfvQuq16a9gHQKm14n0ijsKWEpbSMTM44FZ\nSnIMPhUpCTF/nfIi9g2pmyFjbkJdcuYPAMP8l4jq9kqb4/SXtaSFvh7/NVtLMBby\nEEnvJGeQS4aVvD0sYJjKNiMsMTjo37DsAohpssUYJ6dWdWCkp1hqqC7ec9lWL20A\nGpHQbZKlrYmTHOlZsU7TrNIcLs99uKtncwnQoxeEdiZ669k3Tm4xxgSR842OnLCY\no1I49Dsn8KyMHnDudAA3pxnBVZ63zzfWZwnN2EsFrM3N1SnWOUG/leqrNRO2fAEs\nEGvx6i/9f3uh26iZHbUqq0S2WEt3yC0uenOw03X1QQKBgQDsryn4pZ6WAMr/Q/23\nPdb5TRd1oryiISTz1B0pdfsh2YeTmNN44dO0kK9mmNpCznV8EVeNQGM6lHCp7HIj\n1cnkQ1CKokxCfWF2j0N9N6H4YaMS68f3xHcVM2ytO4XnkyUfa46SPUvuMbzCEQ6f\nXpvLg4Wu4Kogb9HRTlIjV4WObwKBgQC9tfUXLqgx9NvaermjIyxjUKFYywmHyKU7\nsjyfKTUyaMlUbxkQHX7M6yW41l+bcgvXn6xwAZCJnhpiLxgaRumKV2WHLFh7hJrD\nMYkLy98Op8ZWfUSXwLO8ZyBJOdQxOTlmgN/tkneJK9c2RKMe3YS6fxty6NideMDw\nDYexusjEsQKBgQCesdvsce/hF+sEOOxW/smzInOGVnUwKBUEv8ZF1GtsCNSUrDWu\nqYwvV4ujuP0vKgswAti3RuLBlmHsLTNiv6e8uz23lpaXRkYhHnHb9X9OcPjMaPcN\nM9e8iVxm0rA30zti09UmTJ8quIKdhJ5PUToYvLjXxp+LXC5Mrrz4IWjVVQKBgQCq\n8n6i4CEhuwItkm8bCQPjjnGFoJe66luyOj8UML7F6NSap+3OrrVnE/GO6GWInjD7\noN9yooZK69Pca5FthD7HsU9EifpFe0013Logjho2i4pWv1SC5ltPxyG5uklx/Z2y\ntyiRXG0ohv/L3/eZRYVnxEfIuPcQlxJMffSre6OUUQKBgQC/2AaRZ8frQYplrOrV\nNQaZiOEx4GfN1v4f9PuSyz3m/NAJapBNT/8ExO8PywWvTTSkBwWQtGFlwKuVrHrC\nu7UMi17jcSWE8XK3ZZrXREVeo9HNGaS3FsrlYl3QbVwOu9EtCPfqc6eRYyyHKuF7\nPs8MHobrlfON9NvznK89NCInQw==\n-----END PRIVATE KEY-----\n",
+  "client_email": "app-admin@teachers-app-v1.iam.gserviceaccount.com",
+  "client_id": "116294736214576129769",
+  "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+  "token_uri": "https://oauth2.googleapis.com/token",
+  "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
+  "client_x509_cert_url": "https://www.googleapis.com/robot/v1/metadata/x509/app-admin%40teachers-app-v1.iam.gserviceaccount.com",
+  "universe_domain": "googleapis.com"
+}
 
 # ==========================================
 # ⚙️ إعدادات النظام
@@ -27,31 +35,19 @@ MASTER_SHEET_KEY = "1KSuSQiVezg4G8z_cmO4lZ2zZFJ96K0hreNFLyKqpQsA"
 ADMIN_USERNAME = "admin"
 ADMIN_PASSWORD = "admin"
 
-# ==========================================
-# 🔌 الاتصال بقاعدة البيانات (Modern Gspread)
-# ==========================================
 @st.cache_resource
 def get_gspread_client():
     try:
-        # تنظيف البيانات (لو نسيت ومسحتهاش)
-        if "PASTE_YOUR_JSON_HERE" in RAW_JSON_DATA:
-            st.error("⚠️ من فضلك ضع بيانات ملف JSON مكان جملة PASTE_YOUR_JSON_HERE في الكود")
-            st.stop()
+        # 🔥 الحل الجذري: تنظيف المفتاح وتمريره مباشرة
+        if "private_key" in CREDENTIALS_DICT:
+            # استبدال علامة السطر الجديد النصية بسطر حقيقي
+            CREDENTIALS_DICT["private_key"] = CREDENTIALS_DICT["private_key"].replace("\\n", "\n")
 
-        # تحويل النص لقاموس
-        try:
-            creds_dict = json.loads(RAW_JSON_DATA)
-        except json.JSONDecodeError:
-            st.error("❌ في مشكلة في نسخ كود الـ JSON. تأكد إنك نسخته صح.")
-            st.stop()
-
-        # 🔥 استخدام الطريقة الحديثة المباشرة من gspread
-        # دي بتستخدم google-auth داخلياً وبتعالج مشاكل التشفير والوقت
-        client = gspread.service_account_from_dict(creds_dict)
+        # استخدام دالة gspread الحديثة (بدون oauth2client القديمة)
+        client = gspread.service_account_from_dict(CREDENTIALS_DICT)
         return client
-
     except Exception as e:
-        st.error(f"❌ خطأ في الاتصال بالسيرفر: {e}")
+        st.error(f"❌ خطأ في الاتصال: {e}")
         return None
 
 client = get_gspread_client()
@@ -65,7 +61,7 @@ def get_master_db():
     try:
         return client.open_by_key(MASTER_SHEET_KEY)
     except Exception as e:
-        st.error(f"❌ مش قادر أوصل للشيت الرئيسي. هل عملت Share للإيميل الجديد؟\nالخطأ: {e}")
+        st.error(f"❌ مش قادر أوصل للشيت الرئيسي. هل عملت Share للإيميل {CREDENTIALS_DICT['client_email']}؟")
         st.stop()
 
 def check_login(username, password):
@@ -100,10 +96,7 @@ def register_new_user(user_data, code_row, duration):
     try:
         new_sheet_name = f"DB_{user_data['Username']}_{random.randint(1000,9999)}"
         new_sheet = client.create(new_sheet_name)
-        
-        # مشاركة الشيت مع الروبوت نفسه
-        creds_dict = json.loads(RAW_JSON_DATA)
-        new_sheet.share(creds_dict["client_email"], perm_type='user', role='writer')
+        new_sheet.share(CREDENTIALS_DICT["client_email"], perm_type='user', role='writer')
         
         COLUMNS = ["Group", "Type", "Date", "Time", "Price", "Status", "SessionNum", "Students", "Notes", "Attendance"]
         new_sheet.sheet1.append_row(COLUMNS)
@@ -164,7 +157,7 @@ elif st.session_state.logged_in_user == "ADMIN_MODE":
             res = []
             for _ in range(nc):
                 res.append([''.join(random.choices(string.ascii_uppercase + string.digits, k=10)), dr, "Available", "", ""])
-            sh.append_rows(rows); st.success("Done!")
+            sh.append_rows(res); st.success("Done!")
         st.dataframe(pd.DataFrame(get_master_db().worksheet("ActivationCodes").get_all_records()))
     with t2:
         st.dataframe(pd.DataFrame(get_master_db().worksheet("Users").get_all_records()))
