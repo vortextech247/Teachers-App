@@ -3,35 +3,35 @@ import pandas as pd
 import gspread
 from google.oauth2.service_account import Credentials
 from datetime import datetime, timedelta, date
-import time
+import json
 import random
 import string
 
 # --- إعدادات الصفحة ---
 st.set_page_config(page_title="EduMaster Pro", layout="wide", page_icon="🎓")
 
-# --- إعدادات المدير ---
-# هام: غير اسم الشيت هنا لو كنت سميته حاجة تانية
 MASTER_SHEET_NAME = "Teachers_Master_DB"
 ADMIN_USERNAME = "admin"
 ADMIN_PASSWORD = "admin"
 
-# --- الاتصال بقاعدة البيانات (الطريقة الآمنة) ---
+# --- الاتصال بقاعدة البيانات ---
 @st.cache_resource
 def get_client():
     try:
-        # هنا الكود بيسحب البيانات من Secrets تلقائياً
-        # Scopes: الصلاحيات المطلوبة
+        # الكود ده بيدور على مفتاح اسمه gcp_json في الـ Secrets
+        if "gcp_json" not in st.secrets:
+            st.error("❌ مفتاح 'gcp_json' غير موجود في Secrets.")
+            st.stop()
+            
+        json_str = st.secrets["gcp_json"]
+        info = json.loads(json_str)
+        
         scopes = [
             "https://www.googleapis.com/auth/spreadsheets",
             "https://www.googleapis.com/auth/drive"
         ]
         
-        # تحويل بيانات السيكريت لبيانات اعتماد
-        creds = Credentials.from_service_account_info(
-            st.secrets["gcp_service_account"],
-            scopes=scopes
-        )
+        creds = Credentials.from_service_account_info(info, scopes=scopes)
         return gspread.authorize(creds)
     except Exception as e:
         st.error(f"❌ خطأ في الاتصال بجوجل: {e}")
@@ -39,28 +39,30 @@ def get_client():
 
 client = get_client()
 
-# لو مفيش اتصال نوقف التطبيق
-if not client:
-    st.info("💡 تأكد من وضع بيانات ملف JSON في الـ Secrets بشكل صحيح.")
-    st.stop()
+if not client: st.stop()
 
 # --- دوال المساعدة ---
 def get_master_db():
     try:
         return client.open(MASTER_SHEET_NAME)
     except Exception as e:
-        st.error(f"❌ مش لاقي ملف الشيت '{MASTER_SHEET_NAME}'. تأكد إنك عملت Share لإيميل الروبوت.")
+        # محاولة استخراج الايميل لمساعدة المستخدم
+        try:
+            email = json.loads(st.secrets["gcp_json"])["client_email"]
+            st.error(f"❌ مش لاقي الشيت '{MASTER_SHEET_NAME}'.\n⚠️ تأكد إنك عملت Share للشيت مع الإيميل ده:\n**{email}**")
+        except:
+            st.error(f"❌ مش لاقي الشيت '{MASTER_SHEET_NAME}'. تأكد من الاسم والمشاركة.")
         st.stop()
 
 # --- واجهة التطبيق ---
 if 'logged_in_user' not in st.session_state:
     st.session_state.logged_in_user = None
 
-# (1) شاشة الدخول والتسجيل
+# (1) شاشة الدخول
 if not st.session_state.logged_in_user:
-    tab1, tab2, tab3 = st.tabs(["تسجيل دخول", "مدرس جديد", "إدارة"])
+    st.title("🎓 نظام إدارة المدرسين")
+    tab1, tab2, tab3 = st.tabs(["دخول", "تسجيل جديد", "إدارة"])
     
-    # دخول المدرس
     with tab1:
         with st.form("login"):
             u = st.text_input("User"); p = st.text_input("Pass", type="password")
@@ -76,78 +78,60 @@ if not st.session_state.logged_in_user:
                                 st.rerun()
                             else: st.error("حساب موقوف"); found=True
                     if not found: st.error("بيانات خاطئة")
-                except: st.error("خطأ في قراءة قاعدة البيانات")
+                except Exception as e: st.error(f"خطأ: {e}")
 
-    # تسجيل مدرس جديد
     with tab2:
         with st.form("signup"):
             code = st.text_input("كود التفعيل"); st.divider()
-            c1, c2 = st.columns(2)
-            new_u = c1.text_input("اسم المستخدم (إنجليزي)"); new_p = c2.text_input("كلمة المرور", type="password")
-            name = st.text_input("الاسم"); phone = st.text_input("هاتف"); 
-            c3, c4, c5 = st.columns(3); gov = c3.text_input("محافظة"); city = c4.text_input("مدينة"); sub = c5.text_input("مادة")
-            
-            if st.form_submit_button("إنشاء حساب"):
-                if new_u and new_p and code:
+            c1, c2 = st.columns(2); nu = c1.text_input("User"); np = c2.text_input("Pass", type="password")
+            n = st.text_input("Name"); ph = st.text_input("Phone")
+            c3, c4, c5 = st.columns(3); g = c3.text_input("Gov"); ci = c4.text_input("City"); s = c5.text_input("Subject")
+            if st.form_submit_button("تسجيل"):
+                if nu and np and code:
                     try:
-                        db = get_master_db()
-                        codes_sh = db.worksheet("ActivationCodes")
-                        users_sh = db.worksheet("Users")
+                        db = get_master_db(); c_sh = db.worksheet("ActivationCodes"); u_sh = db.worksheet("Users")
+                        try: cell = c_sh.find(code)
+                        except: st.error("كود خاطئ"); cell=None
                         
-                        # التحقق من الكود
-                        cell = codes_sh.find(code)
-                        if cell and codes_sh.cell(cell.row, 3).value == "Available":
-                            duration = int(codes_sh.cell(cell.row, 2).value)
-                            
-                            # إنشاء شيت خاص
-                            new_sh_name = f"DB_{new_u}_{random.randint(1000,9999)}"
+                        if cell and c_sh.cell(cell.row, 3).value == "Available":
+                            dur = int(c_sh.cell(cell.row, 2).value)
+                            new_sh_name = f"DB_{nu}_{random.randint(1000,9999)}"
                             new_sh = client.create(new_sh_name)
-                            # مشاركة الشيت مع الروبوت (بيحصل أوتوماتيك) ومع الإيميل الرئيسي لو حابب
-                            new_sh.share(st.secrets["gcp_service_account"]["client_email"], perm_type='user', role='writer')
-                            
-                            # الهيكل
-                            cols = ["Group", "Type", "Date", "Time", "Price", "Status", "SessionNum", "Students", "Notes", "Attendance"]
-                            new_sh.sheet1.append_row(cols)
-                            
-                            # الحفظ
-                            exp = (datetime.now() + timedelta(days=duration)).strftime("%Y-%m-%d")
-                            users_sh.append_row([new_u, new_p, name, phone, gov, city, sub, "Premium", exp, "Active", new_sh.id])
-                            
-                            # حرق الكود
-                            codes_sh.update_cell(cell.row, 3, "Used")
-                            st.success("تم إنشاء الحساب بنجاح!"); st.balloons()
-                        else:
-                            st.error("كود غير صالح")
+                            email = json.loads(st.secrets["gcp_json"])["client_email"]
+                            new_sh.share(email, perm_type='user', role='writer')
+                            new_sh.sheet1.append_row(["Group", "Type", "Date", "Time", "Price", "Status", "SessionNum", "Students", "Notes", "Attendance"])
+                            exp = (datetime.now() + timedelta(days=dur)).strftime("%Y-%m-%d")
+                            u_sh.append_row([nu, np, n, ph, g, ci, s, "Premium", exp, "Active", new_sh.id])
+                            c_sh.update_cell(cell.row, 3, "Used"); c_sh.update_cell(cell.row, 4, nu); c_sh.update_cell(cell.row, 5, str(date.today()))
+                            st.success("تم التسجيل!"); st.balloons()
+                        else: st.error("كود غير صالح")
                     except Exception as e: st.error(f"خطأ: {e}")
                 else: st.warning("اكمل البيانات")
 
-    # دخول الأدمن
     with tab3:
-        if st.text_input("Admin User") == ADMIN_USERNAME and st.text_input("Admin Pass", type="password") == ADMIN_PASSWORD:
-            if st.button("توليد كود تجريبي"):
-                db = get_master_db(); sh = db.worksheet("ActivationCodes")
-                c = str(random.randint(10000,99999)); sh.append_row([c, 30, "Available", "", ""])
-                st.success(f"الكود: {c}")
+        au = st.text_input("A-User"); ap = st.text_input("A-Pass", type="password")
+        if st.button("دخول"):
+            if au == ADMIN_USERNAME and ap == ADMIN_PASSWORD: st.session_state.logged_in_user = "ADMIN"; st.rerun()
 
-# (2) السيستم الداخلي (بعد الدخول)
+# (2) لوحة الأدمن والمدرس
+elif st.session_state.logged_in_user == "ADMIN":
+    st.title("Admin"); 
+    if st.button("Logout"): st.session_state.logged_in_user = None; st.rerun()
+    if st.button("Generate Code"):
+        sh = get_master_db().worksheet("ActivationCodes")
+        c = ''.join(random.choices(string.ascii_uppercase + string.digits, k=8))
+        sh.append_row([c, 30, "Available", "", ""])
+        st.success(f"Code: {c}")
+    try: st.dataframe(pd.DataFrame(get_master_db().worksheet("ActivationCodes").get_all_records()))
+    except: pass
+
 elif st.session_state.logged_in_user:
-    USER = st.session_state.logged_in_user
-    st.title(f"أهلاً {USER['Full_Name']}")
-    if st.button("خروج"): st.session_state.logged_in_user = None; st.rerun()
-    
-    # الاتصال بقاعدة بيانات المدرس
+    u = st.session_state.logged_in_user
+    st.title(f"Welcome {u['Full_Name']}")
+    if st.button("Logout"): st.session_state.logged_in_user = None; st.rerun()
     try:
-        user_sh = client.open_by_key(USER['Database_ID']).sheet1
-        data = user_sh.get_all_records()
-        df = pd.DataFrame(data)
-        
-        t1, t2 = st.tabs(["الحصص", "إضافة حصة"])
-        with t1:
-            st.dataframe(df)
-        with t2:
-            g = st.text_input("اسم المجموعة")
-            if st.button("حفظ"):
-                user_sh.append_row([g, "Normal", str(date.today()), "10:00", 100, "FALSE", 1, "", "", ""])
-                st.success("تم"); st.rerun()
-    except:
-        st.error("جاري تجهيز قاعدة البيانات...")
+        sh = client.open_by_key(u['Database_ID']).sheet1
+        data = sh.get_all_values()
+        if len(data) > 1: st.dataframe(pd.DataFrame(data[1:], columns=data[0]))
+        else: st.info("لا توجد بيانات")
+    except Exception as e: st.error(f"خطأ: {e}")
