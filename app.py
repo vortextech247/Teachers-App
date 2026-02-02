@@ -1,358 +1,153 @@
 import streamlit as st
 import pandas as pd
 import gspread
+from google.oauth2.service_account import Credentials
 from datetime import datetime, timedelta, date
 import time
 import random
 import string
-import json
 
-# --- 1. إعدادات الصفحة ---
+# --- إعدادات الصفحة ---
 st.set_page_config(page_title="EduMaster Pro", layout="wide", page_icon="🎓")
 
-# ==========================================
-# 🔐 بيانات الاتصال (تم دمج مفتاحك هنا جاهز)
-# ==========================================
-# لا تعدل أي حرف في الجزء ده، ده المفتاح الخاص بيك
-CREDENTIALS_DICT = {
-  "type": "service_account",
-  "project_id": "teachers-app-v1",
-  "private_key_id": "612b514c54649cab165659a421e8515123e6a979",
-  "private_key": "-----BEGIN PRIVATE KEY-----\nMIIEvwIBADANBgkqhkiG9w0BAQEFAASCBKkwggSlAgEAAoIBAQCvZYxuUR3kZG1r\n10ZFXeui55T4wbH7Y9iYN8V0eq2TO9jbg7eyBREIN2/cxRNTUsvnvdvVsHnrm+uW\nfMfj2BJc+0jSupnBo0vugUCtxIFRAn1WCYyHIn+xMiuyUKbpXLWbp9xa2trO6w5V\nPjCtZ2XW3DjM+IvlUj+BkcFXpV3jZ9b8AqQ3hFHPvB24ZO/8hIqi/tkEl+Z0en0A\n1IY+KSvew/zKHjSgUvJtDvTSyl3LMknPysjXewJAOZHCnZcJNz3hYuc8KgksB7TH\nk5kLO+LQnfxbL5PnEZ+11F/enPzF5eL3zM8k3bvObLBwW7rT5aUFp3TP11pRVsRU\nRwSxHHa/AgMBAAECggEAFg7dVFpbOgfvQuq16a9gHQKm14n0ijsKWEpbSMTM44FZ\nSnIMPhUpCTF/nfIi9g2pmyFjbkJdcuYPAMP8l4jq9kqb4/SXtaSFvh7/NVtLMBby\nEEnvJGeQS4aVvD0sYJjKNiMsMTjo37DsAohpssUYJ6dWdWCkp1hqqC7ec9lWL20A\nGpHQbZKlrYmTHOlZsU7TrNIcLs99uKtncwnQoxeEdiZ669k3Tm4xxgSR842OnLCY\no1I49Dsn8KyMHnDudAA3pxnBVZ63zzfWZwnN2EsFrM3N1SnWOUG/leqrNRO2fAEs\nEGvx6i/9f3uh26iZHbUqq0S2WEt3yC0uenOw03X1QQKBgQDsryn4pZ6WAMr/Q/23\nPdb5TRd1oryiISTz1B0pdfsh2YeTmNN44dO0kK9mmNpCznV8EVeNQGM6lHCp7HIj\n1cnkQ1CKokxCfWF2j0N9N6H4YaMS68f3xHcVM2ytO4XnkyUfa46SPUvuMbzCEQ6f\nXpvLg4Wu4Kogb9HRTlIjV4WObwKBgQC9tfUXLqgx9NvaermjIyxjUKFYywmHyKU7\nsjyfKTUyaMlUbxkQHX7M6yW41l+bcgvXn6xwAZCJnhpiLxgaRumKV2WHLFh7hJrD\nMYkLy98Op8ZWfUSXwLO8ZyBJOdQxOTlmgN/tkneJK9c2RKMe3YS6fxty6NideMDw\nDYexusjEsQKBgQCesdvsce/hF+sEOOxW/smzInOGVnUwKBUEv8ZF1GtsCNSUrDWu\nqYwvV4ujuP0vKgswAti3RuLBlmHsLTNiv6e8uz23lpaXRkYhHnHb9X9OcPjMaPcN\nM9e8iVxm0rA30zti09UmTJ8quIKdhJ5PUToYvLjXxp+LXC5Mrrz4IWjVVQKBgQCq\n8n6i4CEhuwItkm8bCQPjjnGFoJe66luyOj8UML7F6NSap+3OrrVnE/GO6GWInjD7\noN9yooZK69Pca5FthD7HsU9EifpFe0013Logjho2i4pWv1SC5ltPxyG5uklx/Z2y\ntyiRXG0ohv/L3/eZRYVnxEfIuPcQlxJMffSre6OUUQKBgQC/2AaRZ8frQYplrOrV\nNQaZiOEx4GfN1v4f9PuSyz3m/NAJapBNT/8ExO8PywWvTTSkBwWQtGFlwKuVrHrC\nu7UMi17jcSWE8XK3ZZrXREVeo9HNGaS3FsrlYl3QbVwOu9EtCPfqc6eRYyyHKuF7\nPs8MHobrlfON9NvznK89NCInQw==\n-----END PRIVATE KEY-----\n",
-  "client_email": "app-admin@teachers-app-v1.iam.gserviceaccount.com",
-  "client_id": "116294736214576129769",
-  "auth_uri": "https://accounts.google.com/o/oauth2/auth",
-  "token_uri": "https://oauth2.googleapis.com/token",
-  "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
-  "client_x509_cert_url": "https://www.googleapis.com/robot/v1/metadata/x509/app-admin%40teachers-app-v1.iam.gserviceaccount.com",
-  "universe_domain": "googleapis.com"
-}
-
-# ==========================================
-# ⚙️ إعدادات النظام
-# ==========================================
-MASTER_SHEET_KEY = "1KSuSQiVezg4G8z_cmO4lZ2zZFJ96K0hreNFLyKqpQsA"
+# --- إعدادات المدير ---
+# هام: غير اسم الشيت هنا لو كنت سميته حاجة تانية
+MASTER_SHEET_NAME = "Teachers_Master_DB"
 ADMIN_USERNAME = "admin"
 ADMIN_PASSWORD = "admin"
 
+# --- الاتصال بقاعدة البيانات (الطريقة الآمنة) ---
 @st.cache_resource
-def get_gspread_client():
+def get_client():
     try:
-        # 🔥 الحل الجذري: تنظيف المفتاح وتمريره مباشرة
-        if "private_key" in CREDENTIALS_DICT:
-            # استبدال علامة السطر الجديد النصية بسطر حقيقي
-            CREDENTIALS_DICT["private_key"] = CREDENTIALS_DICT["private_key"].replace("\\n", "\n")
-
-        # استخدام دالة gspread الحديثة (بدون oauth2client القديمة)
-        client = gspread.service_account_from_dict(CREDENTIALS_DICT)
-        return client
+        # هنا الكود بيسحب البيانات من Secrets تلقائياً
+        # Scopes: الصلاحيات المطلوبة
+        scopes = [
+            "https://www.googleapis.com/auth/spreadsheets",
+            "https://www.googleapis.com/auth/drive"
+        ]
+        
+        # تحويل بيانات السيكريت لبيانات اعتماد
+        creds = Credentials.from_service_account_info(
+            st.secrets["gcp_service_account"],
+            scopes=scopes
+        )
+        return gspread.authorize(creds)
     except Exception as e:
-        st.error(f"❌ خطأ في الاتصال: {e}")
+        st.error(f"❌ خطأ في الاتصال بجوجل: {e}")
         return None
 
-client = get_gspread_client()
+client = get_client()
 
-if not client: st.stop()
+# لو مفيش اتصال نوقف التطبيق
+if not client:
+    st.info("💡 تأكد من وضع بيانات ملف JSON في الـ Secrets بشكل صحيح.")
+    st.stop()
 
-# ==========================================
-# 🛠️ دوال النظام
-# ==========================================
+# --- دوال المساعدة ---
 def get_master_db():
     try:
-        return client.open_by_key(MASTER_SHEET_KEY)
+        return client.open(MASTER_SHEET_NAME)
     except Exception as e:
-        st.error(f"❌ مش قادر أوصل للشيت الرئيسي. هل عملت Share للإيميل {CREDENTIALS_DICT['client_email']}؟")
+        st.error(f"❌ مش لاقي ملف الشيت '{MASTER_SHEET_NAME}'. تأكد إنك عملت Share لإيميل الروبوت.")
         st.stop()
 
-def check_login(username, password):
-    master = get_master_db()
-    try: users_sheet = master.worksheet("Users")
-    except: st.error("❌ مش لاقي صفحة 'Users'"); st.stop() 
-    all_users = users_sheet.get_all_records()
-    for user in all_users:
-        if str(user['Username']).lower() == username.lower() and str(user['Password']) == password:
-            if user['Status'] == 'Active': return user
-            else: return "Suspended"
-    return None
-
-def verify_code(code):
-    master = get_master_db()
-    try: codes_sheet = master.worksheet("ActivationCodes")
-    except: return False, None, None
-    try:
-        cell = codes_sheet.find(code)
-        if cell:
-            row_data = codes_sheet.row_values(cell.row)
-            if row_data[2] == "Available": return True, cell.row, row_data[1] 
-    except: pass
-    return False, None, None
-
-def register_new_user(user_data, code_row, duration):
-    master = get_master_db()
-    users_sheet = master.worksheet("Users")
-    codes_sheet = master.worksheet("ActivationCodes")
-    existing = users_sheet.col_values(1)
-    if user_data['Username'] in existing: return False, "اسم المستخدم موجود!"
-    try:
-        new_sheet_name = f"DB_{user_data['Username']}_{random.randint(1000,9999)}"
-        new_sheet = client.create(new_sheet_name)
-        new_sheet.share(CREDENTIALS_DICT["client_email"], perm_type='user', role='writer')
-        
-        COLUMNS = ["Group", "Type", "Date", "Time", "Price", "Status", "SessionNum", "Students", "Notes", "Attendance"]
-        new_sheet.sheet1.append_row(COLUMNS)
-        expiry_date = (datetime.now() + timedelta(days=int(duration))).strftime("%Y-%m-%d")
-        row_to_add = [user_data['Username'], user_data['Password'], user_data['Full_Name'], user_data['Phone'], user_data['Gov'], user_data['City'], user_data['Subject'], "Premium", expiry_date, "Active", new_sheet.id]
-        users_sheet.append_row(row_to_add)
-        codes_sheet.update_cell(code_row, 3, "Used")
-        codes_sheet.update_cell(code_row, 4, user_data['Username'])
-        codes_sheet.update_cell(code_row, 5, str(datetime.now().date()))
-        return True, "تم الإنشاء بنجاح!"
-    except Exception as e: return False, f"خطأ: {str(e)}"
-
 # --- واجهة التطبيق ---
-if 'logged_in_user' not in st.session_state: st.session_state.logged_in_user = None
+if 'logged_in_user' not in st.session_state:
+    st.session_state.logged_in_user = None
 
+# (1) شاشة الدخول والتسجيل
 if not st.session_state.logged_in_user:
-    tab1, tab2, tab3 = st.tabs(["🔒 دخول", "📝 جديد", "🔑 Admin"])
+    tab1, tab2, tab3 = st.tabs(["تسجيل دخول", "مدرس جديد", "إدارة"])
+    
+    # دخول المدرس
     with tab1:
         with st.form("login"):
             u = st.text_input("User"); p = st.text_input("Pass", type="password")
-            if st.form_submit_button("Enter"):
-                user = check_login(u, p)
-                if isinstance(user, dict): st.session_state.logged_in_user = user; st.rerun()
-                elif user == "Suspended": st.error("موقوف")
-                else: st.error("خطأ")
+            if st.form_submit_button("دخول"):
+                try:
+                    sh = get_master_db().worksheet("Users")
+                    users = sh.get_all_records()
+                    found = False
+                    for user in users:
+                        if str(user['Username']).lower() == u.lower() and str(user['Password']) == p:
+                            if user['Status'] == 'Active':
+                                st.session_state.logged_in_user = user
+                                st.rerun()
+                            else: st.error("حساب موقوف"); found=True
+                    if not found: st.error("بيانات خاطئة")
+                except: st.error("خطأ في قراءة قاعدة البيانات")
+
+    # تسجيل مدرس جديد
     with tab2:
         with st.form("signup"):
-            code = st.text_input("Code"); st.divider()
-            c1, c2 = st.columns(2); ru = c1.text_input("User"); rp = c2.text_input("Pass", type="password")
-            rn = st.text_input("Name"); rph = st.text_input("Phone")
-            c3, c4, c5 = st.columns(3); rg = c3.text_input("Gov"); rc = c4.text_input("City"); rs = c5.text_input("Sub")
-            if st.form_submit_button("Create"):
-                if ru and rp and code:
-                    valid, rid, dur = verify_code(code)
-                    if valid:
-                        ud = {"Username": ru, "Password": rp, "Full_Name": rn, "Phone": rph, "Gov": rg, "City": rc, "Subject": rs}
-                        ok, m = register_new_user(ud, rid, dur)
-                        if ok: st.success(m); st.balloons()
-                        else: st.error(m)
-                    else: st.error("Invalid Code")
-    with tab3:
-        with st.form("admin"):
-            au = st.text_input("A-User"); ap = st.text_input("A-Pass", type="password")
-            if st.form_submit_button("Go"):
-                if au == ADMIN_USERNAME and ap == ADMIN_PASSWORD: st.session_state.logged_in_user = "ADMIN_MODE"; st.rerun()
-                else: st.error("No")
-
-elif st.session_state.logged_in_user == "ADMIN_MODE":
-    st.title("Admin Panel"); 
-    if st.button("Exit"): st.session_state.logged_in_user = None; st.rerun()
-    t1, t2 = st.tabs(["Codes", "Users"])
-    with t1:
-        c1, c2 = st.columns(2)
-        nc = c1.number_input("Count", 1, 50, 5)
-        dr = c2.selectbox("Days", [30, 90, 180, 365])
-        if st.button("Generate"):
-            sh = get_master_db().worksheet("ActivationCodes")
-            res = []
-            for _ in range(nc):
-                res.append([''.join(random.choices(string.ascii_uppercase + string.digits, k=10)), dr, "Available", "", ""])
-            sh.append_rows(res); st.success("Done!")
-        st.dataframe(pd.DataFrame(get_master_db().worksheet("ActivationCodes").get_all_records()))
-    with t2:
-        st.dataframe(pd.DataFrame(get_master_db().worksheet("Users").get_all_records()))
-
-else:
-    USER = st.session_state.logged_in_user; USER_DB_ID = USER['Database_ID']
-    with st.sidebar: st.title(f"Welcome {USER['Full_Name']}"); 
-    if st.sidebar.button("Log out"): st.session_state.logged_in_user = None; st.rerun()
-    
-    def get_user_sheet(): return client.open_by_key(USER_DB_ID).sheet1
-    COLUMNS = ["Group", "Type", "Date", "Time", "Price", "Status", "SessionNum", "Students", "Notes", "Attendance"]
-    NOW_CAIRO = datetime.utcnow() + timedelta(hours=2)
-    TODAY_DATE = NOW_CAIRO.date()
-
-    def load_user_data():
-        try:
-            sh = get_user_sheet()
-            all_val = sh.get_all_values()
-            if len(all_val) < 2: return pd.DataFrame(columns=COLUMNS)
-            data = all_val[1:]; clean = []
-            for r in data:
-                if len(r) < len(COLUMNS): r += [""] * (len(COLUMNS) - len(r))
-                clean.append(r[:len(COLUMNS)])
-            df = pd.DataFrame(clean, columns=COLUMNS)
-            df['Date'] = df['Date'].astype(str).str.strip()
-            df['Date_Parsed'] = pd.to_datetime(df['Date'], errors='coerce')
-            if df['Date_Parsed'].isna().any(): df['Date_Parsed'] = df['Date_Parsed'].fillna(pd.Timestamp.today())
-            df['Date'] = df['Date_Parsed'].dt.date
-            df['Status'] = df['Status'].astype(str).str.strip().str.upper() == 'TRUE'
-            df['Price'] = pd.to_numeric(df['Price'], errors='coerce').fillna(0).astype(float)
-            df['SessionNum'] = pd.to_numeric(df['SessionNum'], errors='coerce').fillna(0).astype(int)
-            return df
-        except Exception as e:
-            st.error(f"Error loading user DB: {e}")
-            return pd.DataFrame(columns=COLUMNS)
-
-    def save_user_data(df):
-        sh = get_user_sheet()
-        df_up = df.copy()
-        df_up['Date'] = df_up['Date'].astype(str)
-        df_up['Status'] = df_up['Status'].apply(lambda x: "TRUE" if x else "FALSE")
-        df_up = df_up.fillna("")
-        sh.clear(); sh.update([COLUMNS] + df_up.values.tolist()); st.cache_data.clear(); return True
-
-    def parse_time_robust(t_str):
-        t_str = str(t_str).strip()
-        try: return datetime.strptime(t_str, "%I:%M %p").time()
-        except:
-            try: return datetime.strptime(t_str, "%H:%M:%S").time()
-            except:
-                try: return datetime.strptime(t_str, "%H:%M").time()
-                except: return datetime.strptime("10:00", "%H:%M").time()
-    
-    def get_students_list(s): return [x.strip() for x in str(s).split(',') if x.strip()]
-
-    if 'df' not in st.session_state: st.session_state.df = load_user_data()
-    if st.sidebar.button("Refresh"): st.session_state.df = load_user_data(); st.rerun()
-    df = st.session_state.df
-
-    with st.sidebar:
-        d_m = TODAY_DATE.month if TODAY_DATE.day <= 25 else (TODAY_DATE.month % 12) + 1
-        d_y = TODAY_DATE.year if TODAY_DATE.month != 12 or TODAY_DATE.day <= 25 else TODAY_DATE.year + 1
-        s_m = st.selectbox("Month", range(1, 13), index=d_m-1)
-        t_d = datetime(d_y, s_m, 1); e_d = t_d.replace(day=25).date()
-        s_d = (t_d.replace(day=1) - timedelta(days=1)).replace(day=26).date()
-        calc_dates_fin = pd.to_datetime(df['Date'], errors='coerce').dt.date
-        date_mask_fin = (calc_dates_fin >= s_d) & (calc_dates_fin <= e_d)
-        mask_calc = date_mask_fin & (df['Status'] == True)
-        prices = pd.to_numeric(df.loc[mask_calc, 'Price'], errors='coerce').fillna(0)
-        st.metric("Income", f"{prices.sum()} EGP")
-        real_c = df[df['Type'] != 'Extra']
-        all_g = sorted(list(set(real_c['Group']))) if not real_c.empty else []
-
-    tab_today, tab_man, tab_tbl, tab_crd, tab_fin, tab_new = st.tabs(["Today", "Manage", "Table", "Cards", "Finance", "New"])
-
-    with tab_today:
-        st.subheader(f"Today: {TODAY_DATE}")
-        tds = df[df['Date'] == TODAY_DATE]
-        if not tds.empty:
-            for i, r in tds.iterrows():
-                with st.container(border=True):
-                    if r['Type'] == 'Extra': continue
-                    st.markdown(f"**{r['Group']}** ({r['SessionNum']})")
-                    if r['Status']: st.success("Done")
-                    else:
-                        c1, c2 = st.columns(2)
-                        st_obj = parse_time_robust(r['Time'])
-                        start = c1.time_input("Start", value=st_obj, key=f"s{i}")
-                        end = c2.time_input("End", value=NOW_CAIRO.time(), key=f"e{i}")
-                        sl = get_students_list(r['Students']); pres = []
-                        cols = st.columns(3)
-                        for idx, s in enumerate(sl):
-                            if cols[idx%3].checkbox(s, True, key=f"at{i}{idx}"): pres.append(s)
-                        if st.button("Save", key=f"sv{i}", type="primary"):
-                            df.at[i, 'Status'] = True; df.at[i, 'Attendance'] = f"P: {len(pres)}"
-                            df.at[i, 'Time'] = start.strftime("%I:%M %p")
-                            save_user_data(df); st.session_state.df=df; st.success("Saved"); st.rerun()
-                        with st.expander("Postpone"):
-                            nd = st.date_input("New Date", key=f"pd{i}")
-                            if st.button("Confirm", key=f"pb{i}"):
-                                delta = nd - r['Date']
-                                mask = (df['Group']==r['Group'])&(df['SessionNum']>=r['SessionNum'])
-                                for ix in df[mask].index: df.at[ix,'Date'] += delta
-                                save_user_data(df); st.session_state.df=df; st.rerun()
-        else: st.info("No sessions today")
-
-    with tab_man:
-        sg = st.selectbox("Group:", ["..."]+all_g)
-        if sg != "...":
-            gf = df[df['Group']==sg].copy().sort_values("SessionNum")
-            st.data_editor(gf, key=f"ge_{sg}", disabled=["Group"], hide_index=True)
-            st.divider()
+            code = st.text_input("كود التفعيل"); st.divider()
             c1, c2 = st.columns(2)
-            with c1.expander("Students"):
-                curr = get_students_list(gf.iloc[0]['Students'] if not gf.empty else "")
-                while len(curr) < 12: curr.append("")
-                nl = []
-                sc = st.columns(3)
-                for x in range(12):
-                    v = sc[x%3].text_input(f"S{x+1}", curr[x], key=f"st_{sg}_{x}")
-                    if v.strip(): nl.append(v.strip())
-                if st.button("Save Students", key=f"sv_st_{sg}"):
-                    df.loc[df['Group']==sg, 'Students'] = ",".join(nl)
-                    save_user_data(df); st.session_state.df=df; st.rerun()
-            with c2.expander("Add Session"):
-                last = gf['SessionNum'].max() if not gf.empty else 0
-                dt = st.date_input("Date", key=f"ad_dt_{sg}")
-                if st.button("Add", key=f"ad_btn_{sg}"):
-                    lr = gf.iloc[-1] if not gf.empty else None
-                    tm = lr['Time'] if lr is not None else "10:00 AM"; pr = lr['Price'] if lr is not None else 0
-                    stds = lr['Students'] if lr is not None else ""
-                    nr = {"Group": sg, "Type": "Normal", "Date": str(dt), "Time": tm, "Price": pr, "Status": "FALSE", "SessionNum": last+1, "Students": stds, "Notes": "", "Attendance": ""}
-                    df = pd.concat([df, pd.DataFrame([nr])], ignore_index=True)
-                    save_user_data(df); st.session_state.df=df; st.rerun()
-            st.markdown("#### Edit & Shift")
-            sn = st.selectbox("Session #:", gf['SessionNum'].unique(), key=f"sn_{sg}")
-            if sn:
-                t_idx = df[(df['Group']==sg) & (df['SessionNum']==sn)].index
-                if not t_idx.empty:
-                    idx = t_idx[0]
-                    cd = df.at[idx, 'Date']; ct = parse_time_robust(df.at[idx, 'Time'])
-                    col1, col2 = st.columns(2)
-                    with col1.container(border=True):
-                        nd = st.date_input("New Date", cd, key=f"nd_{sg}_{sn}")
-                        nt = st.time_input("New Time", ct, key=f"nt_{sg}_{sn}")
-                        if st.button("Apply to All", key=f"app_{sg}_{sn}"):
-                            delta = nd - cd; msk = (df['Group']==sg) & (df['SessionNum'] >= sn)
-                            for i in df[msk].index:
-                                df.at[i, 'Date'] += delta; df.at[i, 'Time'] = nt.strftime("%I:%M %p")
-                            save_user_data(df); st.session_state.df=df; st.rerun()
-                    with col2.container(border=True):
-                        if st.button("Delete", key=f"del_{sg}_{sn}", type="primary"):
-                            df = df.drop(idx).reset_index(drop=True); save_user_data(df); st.session_state.df=df; st.rerun()
+            new_u = c1.text_input("اسم المستخدم (إنجليزي)"); new_p = c2.text_input("كلمة المرور", type="password")
+            name = st.text_input("الاسم"); phone = st.text_input("هاتف"); 
+            c3, c4, c5 = st.columns(3); gov = c3.text_input("محافظة"); city = c4.text_input("مدينة"); sub = c5.text_input("مادة")
+            
+            if st.form_submit_button("إنشاء حساب"):
+                if new_u and new_p and code:
+                    try:
+                        db = get_master_db()
+                        codes_sh = db.worksheet("ActivationCodes")
+                        users_sh = db.worksheet("Users")
+                        
+                        # التحقق من الكود
+                        cell = codes_sh.find(code)
+                        if cell and codes_sh.cell(cell.row, 3).value == "Available":
+                            duration = int(codes_sh.cell(cell.row, 2).value)
+                            
+                            # إنشاء شيت خاص
+                            new_sh_name = f"DB_{new_u}_{random.randint(1000,9999)}"
+                            new_sh = client.create(new_sh_name)
+                            # مشاركة الشيت مع الروبوت (بيحصل أوتوماتيك) ومع الإيميل الرئيسي لو حابب
+                            new_sh.share(st.secrets["gcp_service_account"]["client_email"], perm_type='user', role='writer')
+                            
+                            # الهيكل
+                            cols = ["Group", "Type", "Date", "Time", "Price", "Status", "SessionNum", "Students", "Notes", "Attendance"]
+                            new_sh.sheet1.append_row(cols)
+                            
+                            # الحفظ
+                            exp = (datetime.now() + timedelta(days=duration)).strftime("%Y-%m-%d")
+                            users_sh.append_row([new_u, new_p, name, phone, gov, city, sub, "Premium", exp, "Active", new_sh.id])
+                            
+                            # حرق الكود
+                            codes_sh.update_cell(cell.row, 3, "Used")
+                            st.success("تم إنشاء الحساب بنجاح!"); st.balloons()
+                        else:
+                            st.error("كود غير صالح")
+                    except Exception as e: st.error(f"خطأ: {e}")
+                else: st.warning("اكمل البيانات")
 
-    with tab_tbl:
-        if not df.empty:
-            res = []
-            for g in all_g:
-                s = df[df['Group']==g]; d = int(s['Status'].sum()); t = len(s)
-                res.append({"Group": g, "Prog": f"{d}/{t}", "Rem": t-d, "End": s['Date'].max()})
-            st.dataframe(pd.DataFrame(res), use_container_width=True)
+    # دخول الأدمن
+    with tab3:
+        if st.text_input("Admin User") == ADMIN_USERNAME and st.text_input("Admin Pass", type="password") == ADMIN_PASSWORD:
+            if st.button("توليد كود تجريبي"):
+                db = get_master_db(); sh = db.worksheet("ActivationCodes")
+                c = str(random.randint(10000,99999)); sh.append_row([c, 30, "Available", "", ""])
+                st.success(f"الكود: {c}")
 
-    with tab_crd:
-        cols = st.columns(3)
-        for idx, g in enumerate(all_g):
-            with cols[idx%3]:
-                with st.container(border=True):
-                    s = df[df['Group']==g]; d = int(s['Status'].sum()); t = len(s)
-                    st.markdown(f"### {g}"); st.caption(f"{d}/{t}")
-                    curr = float(s.iloc[0]['Price']) if not s.empty else 0.0
-                    np = st.number_input("Price", value=curr, key=f"prc_{g}")
-                    if st.button("Update", key=f"up_{g}"):
-                        df.loc[df['Group']==g, 'Price'] = np; save_user_data(df); st.session_state.df=df; st.rerun()
-
-    with tab_fin:
-        c1,c2,c3 = st.columns([3,2,1])
-        n = c1.text_input("Desc"); m = c2.number_input("Amount", step=50.0)
-        if c3.button("Add"):
-            rw = {"Group": n, "Type": "Extra", "Date": str(date.today()), "Price": float(m), "Status": "TRUE", "SessionNum": 0, "Students": "", "Attendance": "", "Notes": "", "Time": ""}
-            df = pd.concat([df, pd.DataFrame([rw])], ignore_index=True); save_user_data(df); st.session_state.df=df; st.rerun()
-        st.divider()
-        md = df[date_mask_fin & (df['Status']==True)].copy()
-        if not md.empty:
-            st.dataframe(md[['Date', 'Group', 'Price']], use_container_width=True)
-
-    with tab_new:
-        c1,c2 = st.columns(2); ng = c1.text_input("Name"); nt = c2.time_input("Time", value=datetime.strptime("10:00", "%H:%M").time())
-        sd = st.date_input("Start"); cnt = st.number_input("Count", 1, 50, 12); pr = st.number_input("Price", step=50)
-        sl = []; c = st.columns(2)
-        for i in range(8):
-            v = c[i%2].text_input(f"St {i+1}")
-            if v: sl.append(v)
-        if st.button("Save"):
-            if ng and ng not in all_g:
-                ts = nt.strftime("%I:%M %p"); rows = []
-                for i in range(cnt): rows.append({"Group": ng, "Type": "Normal", "Date": sd+timedelta(days=i*7), "Time": ts, "Price": pr, "Status": False, "SessionNum": i+1, "Students": ",".join(sl), "Notes": "", "Attendance": ""})
-                df = pd.concat([df, pd.DataFrame(rows)], ignore_index=True); save_user_data(df); st.session_state.df=df; st.success("Saved"); st.rerun()
-            else: st.error("Exists")
+# (2) السيستم الداخلي (بعد الدخول)
+elif st.session_state.logged_in_user:
+    USER = st.session_state.logged_in_user
+    st.title(f"أهلاً {USER['Full_Name']}")
+    if st.button("خروج"): st.session_state.logged_in_user = None; st.rerun()
+    
+    # الاتصال بقاعدة بيانات المدرس
+    try:
+        user_sh = client.open_by_key(USER['Database_ID']).sheet1
+        data = user_sh.get_all_records()
+        df = pd.DataFrame(data)
+        
+        t1, t2 = st.tabs(["الحصص", "إضافة حصة"])
+        with t1:
+            st.dataframe(df)
+        with t2:
+            g = st.text_input("اسم المجموعة")
+            if st.button("حفظ"):
+                user_sh.append_row([g, "Normal", str(date.today()), "10:00", 100, "FALSE", 1, "", "", ""])
+                st.success("تم"); st.rerun()
+    except:
+        st.error("جاري تجهيز قاعدة البيانات...")
