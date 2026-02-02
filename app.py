@@ -1,7 +1,6 @@
 import streamlit as st
 import pandas as pd
 import gspread
-from oauth2client.service_account import ServiceAccountCredentials
 from datetime import datetime, timedelta, date
 import time
 import random
@@ -12,6 +11,16 @@ import json
 st.set_page_config(page_title="EduMaster Pro", layout="wide", page_icon="🎓")
 
 # ==========================================
+# ⚙️ إعدادات المفاتيح (الطريقة الحديثة)
+# ==========================================
+
+# ⚠️⚠️ هام جداً: امسح المحتوى اللي بين علامات التنصيص وحط محتوى ملف الـ JSON الجديد
+# تأكد إنك بتنسخ من القوس { للقوس }
+RAW_JSON_DATA = """
+PASTE_YOUR_JSON_HERE
+"""
+
+# ==========================================
 # ⚙️ إعدادات النظام
 # ==========================================
 MASTER_SHEET_KEY = "1KSuSQiVezg4G8z_cmO4lZ2zZFJ96K0hreNFLyKqpQsA"
@@ -19,36 +28,35 @@ ADMIN_USERNAME = "admin"
 ADMIN_PASSWORD = "admin"
 
 # ==========================================
-# 🔌 الاتصال بقاعدة البيانات (الكود المصحح)
+# 🔌 الاتصال بقاعدة البيانات (Modern Gspread)
 # ==========================================
 @st.cache_resource
 def get_gspread_client():
     try:
-        # بنسحب البيانات من Secrets كـ Dictionary
-        # لاحظ: st.secrets بتحول الـ toml لـ dict تلقائياً
-        creds_dict = dict(st.secrets)
+        # تنظيف البيانات (لو نسيت ومسحتهاش)
+        if "PASTE_YOUR_JSON_HERE" in RAW_JSON_DATA:
+            st.error("⚠️ من فضلك ضع بيانات ملف JSON مكان جملة PASTE_YOUR_JSON_HERE في الكود")
+            st.stop()
 
-        # 🔥🔥 الحل الجذري لمشكلة المفتاح 🔥🔥
-        # بنقوله: لو لقيت حرفين \ و n جنب بعض، شيلهم وحط مكانهم زرار إنتر حقيقي
-        if "private_key" in creds_dict:
-            creds_dict["private_key"] = creds_dict["private_key"].replace("\\n", "\n")
+        # تحويل النص لقاموس
+        try:
+            creds_dict = json.loads(RAW_JSON_DATA)
+        except json.JSONDecodeError:
+            st.error("❌ في مشكلة في نسخ كود الـ JSON. تأكد إنك نسخته صح.")
+            st.stop()
 
-        # إنشاء الاتصال
-        creds = ServiceAccountCredentials.from_json_keyfile_dict(
-            creds_dict, 
-            ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
-        )
-        client = gspread.authorize(creds)
+        # 🔥 استخدام الطريقة الحديثة المباشرة من gspread
+        # دي بتستخدم google-auth داخلياً وبتعالج مشاكل التشفير والوقت
+        client = gspread.service_account_from_dict(creds_dict)
         return client
+
     except Exception as e:
         st.error(f"❌ خطأ في الاتصال بالسيرفر: {e}")
         return None
 
 client = get_gspread_client()
 
-# لو مفيش اتصال، وقف البرنامج ومتكملش عشان ميضربش إيرور تاني تحت
-if not client:
-    st.stop()
+if not client: st.stop()
 
 # ==========================================
 # 🛠️ دوال النظام
@@ -57,7 +65,7 @@ def get_master_db():
     try:
         return client.open_by_key(MASTER_SHEET_KEY)
     except Exception as e:
-        st.error(f"❌ مش قادر أوصل للشيت الرئيسي. كود الخطأ: {e}")
+        st.error(f"❌ مش قادر أوصل للشيت الرئيسي. هل عملت Share للإيميل الجديد؟\nالخطأ: {e}")
         st.stop()
 
 def check_login(username, password):
@@ -92,8 +100,10 @@ def register_new_user(user_data, code_row, duration):
     try:
         new_sheet_name = f"DB_{user_data['Username']}_{random.randint(1000,9999)}"
         new_sheet = client.create(new_sheet_name)
+        
         # مشاركة الشيت مع الروبوت نفسه
-        new_sheet.share(st.secrets["client_email"], perm_type='user', role='writer')
+        creds_dict = json.loads(RAW_JSON_DATA)
+        new_sheet.share(creds_dict["client_email"], perm_type='user', role='writer')
         
         COLUMNS = ["Group", "Type", "Date", "Time", "Price", "Status", "SessionNum", "Students", "Notes", "Attendance"]
         new_sheet.sheet1.append_row(COLUMNS)
@@ -154,7 +164,7 @@ elif st.session_state.logged_in_user == "ADMIN_MODE":
             res = []
             for _ in range(nc):
                 res.append([''.join(random.choices(string.ascii_uppercase + string.digits, k=10)), dr, "Available", "", ""])
-            sh.append_rows(res); st.success("Done!")
+            sh.append_rows(rows); st.success("Done!")
         st.dataframe(pd.DataFrame(get_master_db().worksheet("ActivationCodes").get_all_records()))
     with t2:
         st.dataframe(pd.DataFrame(get_master_db().worksheet("Users").get_all_records()))
