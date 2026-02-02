@@ -44,9 +44,10 @@ if not client:
 
 def get_master_db():
     try:
-        return client.open(MASTER_SHEET_NAME)
-    except:
-        st.error("❌ مش قادر أوصل لقاعدة البيانات الرئيسية. اتأكد إنك عملت Share لإيميل الروبوت.")
+        # التعديل هنا: الفتح باستخدام الـ Key بدل الاسم
+        return client.open_by_key(MASTER_SHEET_KEY)
+    except Exception as e:
+        st.error(f"❌ مش قادر أوصل لقاعدة البيانات. السبب: {e}")
         st.stop()
 
 def check_login(username, password):
